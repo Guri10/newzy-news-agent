@@ -51,7 +51,7 @@
 ## File Structure
 
 - `package.json`  
-  Project scripts and dependencies.
+  Project scripts and dependencies, including Playwright install and verification scripts.
 
 - `next.config.ts`  
   Next.js configuration.
@@ -118,6 +118,9 @@
 
 - `playwright.config.ts`  
   Playwright configuration.
+
+- `scripts/verify-playwright.ts`  
+  Demo smoke script that launches Chromium through Playwright, visits a data URL, reads text from the page, and exits successfully only when the browser automation path works.
 
 ## Data Model
 
@@ -221,6 +224,76 @@ npx playwright install chromium
 ```
 
 Expected: Playwright Chromium browser is installed locally.
+
+- [ ] Add Playwright verification scripts to `package.json`.
+
+Use these scripts:
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "verify:playwright": "tsx scripts/verify-playwright.ts"
+  }
+}
+```
+
+- [ ] Install the TypeScript script runner used by the Playwright verification script.
+
+Run:
+
+```bash
+npm install -D tsx
+```
+
+Expected: `tsx` is added to `devDependencies`.
+
+- [ ] Create `scripts/verify-playwright.ts`.
+
+```typescript
+import { chromium } from '@playwright/test';
+
+async function main() {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+
+  await page.goto(
+    'data:text/html,<main><h1>Playwright installed</h1><p>Chromium smoke test passed.</p></main>'
+  );
+
+  const heading = await page.getByRole('heading', {
+    name: 'Playwright installed',
+  }).textContent();
+
+  await browser.close();
+
+  if (heading !== 'Playwright installed') {
+    throw new Error(`Unexpected Playwright smoke result: ${heading}`);
+  }
+
+  console.log('Playwright verification passed: Chromium launched and page automation worked.');
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+- [ ] Run the Playwright verification script.
+
+Run:
+
+```bash
+npm run verify:playwright
+```
+
+Expected:
+
+```text
+Playwright verification passed: Chromium launched and page automation worked.
+```
 
 - [ ] Add `.env.example`.
 
@@ -465,8 +538,40 @@ git commit -m "feat: add news dashboard"
 **Files:**
 - Create: `playwright.config.ts`
 - Create: `tests/e2e/news-agent.spec.ts`
+- Verify existing: `scripts/verify-playwright.ts`
 
 - [ ] Add Playwright config that starts the Next.js dev server.
+
+Use this baseline config:
+
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: true,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: {
+    baseURL: 'http://127.0.0.1:3000',
+    trace: 'on-first-retry',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 7'] },
+    },
+  ],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://127.0.0.1:3000',
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
 
 - [ ] Write e2e test for dashboard load.
 
@@ -484,10 +589,22 @@ npm run test:e2e
 
 Expected: Playwright opens Chromium, tests pass, and no text overlaps at desktop or mobile viewport.
 
+- [ ] Re-run the standalone Playwright installation verification after e2e setup.
+
+```bash
+npm run verify:playwright
+```
+
+Expected:
+
+```text
+Playwright verification passed: Chromium launched and page automation worked.
+```
+
 - [ ] Commit Playwright tests.
 
 ```bash
-git add playwright.config.ts tests/e2e package.json package-lock.json
+git add playwright.config.ts tests/e2e scripts/verify-playwright.ts package.json package-lock.json
 git commit -m "test: add playwright coverage"
 ```
 
@@ -554,6 +671,7 @@ git push -u origin codex/news-agent-mvp
 
 - No implementation code is included in this plan.
 - Playwright installation is explicit.
+- Playwright verification is explicit through `npm run verify:playwright`.
 - The GitHub repo and local empty-repo state are reflected.
 - The plan uses TDD for behavior-bearing code.
 - The API key storage path is explicit.
