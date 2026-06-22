@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum NewsCategory {
+  GEOPOLITICS
+  SPORTS
+}
+
+enum FetchRunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model Settings {
+  id                  String   @id @default("default")
+  geopoliticsEnabled  Boolean  @default(true)
+  sportsEnabled       Boolean  @default(true)
+  scheduleEnabled     Boolean  @default(false)
+  scheduleTime        String   @default("08:00")
+  timezone            String   @default("America/Los_Angeles")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Article {
+  id          String       @id @default(cuid())
+  externalId  String?
+  url         String       @unique
+  title       String
+  description String?
+  source      String
+  imageUrl    String?
+  publishedAt DateTime
+  category    NewsCategory
+  createdAt   DateTime     @default(now())
+
+  @@index([category, publishedAt])
+}
+
+model Digest {
+  id        String   @id @default(cuid())
+  date      String   @unique
+  sections  Json
+  createdAt DateTime @default(now())
+}
+
+model FetchRun {
+  id         String          @id @default(cuid())
+  startedAt  DateTime        @default(now())
+  finishedAt DateTime?
+  status     FetchRunStatus  @default(RUNNING)
+  message    String?
+}
