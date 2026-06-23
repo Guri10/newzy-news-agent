@@ -9,6 +9,26 @@ test('dashboard loads', async ({ page }) => {
 });
 
 test('toggles categories and saves schedule time', async ({ page }) => {
+  await page.route('**/api/settings', async (route) => {
+    if (route.request().method() !== 'PUT') {
+      await route.continue();
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'default',
+        geopoliticsEnabled: true,
+        sportsEnabled: false,
+        scheduleEnabled: true,
+        scheduleTime: '17:30',
+        timezone: 'America/Los_Angeles',
+      }),
+    });
+  });
+
   await page.goto('/');
 
   await page.getByLabel('Sports').uncheck();
